@@ -24,11 +24,14 @@ jobs:
         run: terraform init
 
       - name: Apply Terraform Plan
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: terraform apply -auto-approve
 
       - name: Configure GitHub Runner
         run: |
-          ssh -o StrictHostKeyChecking=no <USER>@<IP_ADDRESS> <<EOF
+          ssh -o StrictHostKeyChecking=no ${{ secrets.GITHUB_RUNNER_USER }}@${{ secrets.GITHUB_RUNNER_IP }} <<EOF
           mkdir actions-runner && cd actions-runner
           curl -o actions-runner-linux-x64-2.292.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.292.0/actions-runner-linux-x64-2.292.0.tar.gz
           tar xzf ./actions-runner-linux-x64-2.292.0.tar.gz
@@ -36,4 +39,3 @@ jobs:
           ./svc.sh install
           ./svc.sh start
           EOF
-
