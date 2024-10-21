@@ -1,7 +1,8 @@
 terraform {
   required_providers {
+    # Replace 'example/linux' with the correct source for a valid provider
     linux = {
-      source  = "example/linux"  # Replace with the correct source for the linux provider
+      source  = "somevendor/linux"  # Replace with a real provider
       version = "1.0.0"  # Adjust the version as needed
     }
   }
