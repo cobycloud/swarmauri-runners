@@ -56,15 +56,21 @@ resource "null_resource" "create_file" {
 }
 
 locals {
-  package_name = "apache2"
+  package_name = "docker-ce"
 }
 
-# Install Apache2 package
-resource "null_resource" "install_package" {
+# Install Docker on the remote Linux server
+resource "null_resource" "install_docker" {
   provisioner "remote-exec" {
     inline = [
       "apt update",
-      "apt install -y ${local.package_name}=2.4.18-2ubuntu3.4"  # Adjust the version as necessary
+      "apt install -y apt-transport-https ca-certificates curl software-properties-common",
+      "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -",
+      "add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"",
+      "apt update",
+      "apt install -y ${local.package_name}",
+      "systemctl start docker",
+      "systemctl enable docker"
     ]
 
     connection {
