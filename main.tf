@@ -1,46 +1,58 @@
 terraform {
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "5.72.1"
+    linux = {
+      source  = "example/linux"  # Replace with the correct source for the linux provider
+      version = "1.0.0"  # Adjust the version as needed
     }
   }
-
-  required_version = ">= 1.0"  # Specify the required Terraform version
 }
 
-provider "aws" {
-  region = "us-west-2" 
+provider "linux" {
+  host     = "127.0.0.1"  # Change this to the appropriate host
+  port     = 22
+  user     = "root"
+  password = "root"  # Use environment variables or secrets for sensitive data
 }
 
-resource "aws_instance" "github_runner" {
-  ami           = "ami-0866a3c8686eaeeba"  # Ensure this AMI ID is valid in your region
-  instance_type = "t2.micro"
+resource "linux_directory" "directory" {
+  path          = "/tmp/linux/dir"
+  owner         = 1000
+  group         = 1000
+  mode          = "755"
+  overwrite     = true
+  recycle_path  = "/tmp/recycle"
+}
 
-  # Optional: Add a name tag for easier identification
-  tags = {
-    Name = "github-runner"
+resource "linux_file" "file" {
+  path    = "/tmp/linux/file"
+  content = <<-EOF
+    hello world
+  EOF
+  owner         = 1000
+  group         = 1000
+  mode          = "644"
+  overwrite     = true
+  recycle_path  = "/tmp/recycle"
+}
+
+locals {
+  package_name = "apache2"
+}
+
+resource "linux_script" "install_package" {
+  lifecycle_commands {
+    create = "apt update && apt install -y ${PACKAGE_NAME}=${PACKAGE_VERSION}"
+    read   = "apt-cache policy ${PACKAGE_NAME} | grep 'Installed:' | grep -v '(none)' | awk '{ print $2 }' | xargs | tr -d '\n'"
+    update = "apt update && apt install -y ${PACKAGE_NAME}=${PACKAGE_VERSION}"
+    delete = "apt remove -y ${PACKAGE_NAME}"
   }
 
-  # Optional: If you want to allow SSH access, you might want to add a security group
-  vpc_security_group_ids = [aws_security_group.allow_ssh.id]
-}
-
-resource "aws_security_group" "allow_ssh" {
-  name        = "allow_ssh"
-  description = "Allow SSH access"
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow SSH from anywhere (not recommended for production)
+  environment = {
+    PACKAGE_NAME    = local.package_name
+    PACKAGE_VERSION = "2.4.18-2ubuntu3.4"  # Adjust the version as necessary
   }
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"  # Allow all outbound traffic
-    cidr_blocks = ["0.0.0.0/0"]
+  triggers = {
+    PACKAGE_NAME = local.package_name
   }
 }
