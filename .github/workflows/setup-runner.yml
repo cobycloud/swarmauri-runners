@@ -1,0 +1,52 @@
+name: Setup GitHub Runner
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  setup-runner:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.4.6
+
+      - name: Initialize Terraform
+        env:
+          LINUX_HOST: ${{ secrets.LINUX_HOST }}
+          LINUX_USER: ${{ secrets.LINUX_USER }}
+          LINUX_PASSWORD: ${{ secrets.LINUX_PASSWORD }}
+        run: terraform init
+
+      - name: Apply Terraform Plan
+        env:
+          TF_VAR_linux_host: ${{ secrets.LINUX_HOST }}
+          TF_VAR_linux_user: ${{ secrets.LINUX_USER }}
+          TF_VAR_linux_password: ${{ secrets.LINUX_PASSWORD }}
+        run: terraform apply -auto-approve
+
+      - name: Configure GitHub Runner
+        env:
+          RUNNER_IP: ${{ secrets.RUNNER_IP }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+          RUNNER_TOKEN: ${{ secrets.RUNNER_TOKEN }}
+        run: |
+          sshpass -p $SSH_PASSWORD ssh -o StrictHostKeyChecking=no -p $SSH_PORT $SSH_USER@$RUNNER_IP <<EOF
+          mkdir -p actions-runner && cd actions-runner
+          curl -o actions-runner-linux-x64-2.292.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.292.0/actions-runner-linux-x64-2.292.0.tar.gz
+          tar xzf ./actions-runner-linux-x64-2.292.0.tar.gz
+          ./config.sh --url https://github.com/YOUR_USERNAME/YOUR_REPO --token $RUNNER_TOKEN
+          ./svc.sh install
+          ./svc.sh start
+          EOF
