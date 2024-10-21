@@ -1,60 +1,83 @@
 terraform {
   required_providers {
-    # Replace 'example/linux' with the correct source for a valid provider
-    linux = {
-      source  = "somevendor/linux"  # Replace with a real provider
-      version = "1.0.0"  # Adjust the version as needed
+    null = {
+      source  = "hashicorp/null"
+      version = "3.2.3"  # Adjust the version as needed
     }
   }
 }
 
-provider "linux" {
-  host     = var.linux_host
-  port     = var.linux_port
-  user     = var.linux_user
-  password = var.linux_password
+provider "null" {}
+
+# Create directory and set ownership/permissions
+resource "null_resource" "create_directory" {
+  provisioner "remote-exec" {
+    inline = [
+      "mkdir -p /tmp/linux/dir",
+      "chown 1000:1000 /tmp/linux/dir",
+      "chmod 755 /tmp/linux/dir"
+    ]
+
+    connection {
+      type        = "ssh"
+      host        = var.linux_host
+      port        = var.linux_port
+      user        = var.linux_user
+      password    = var.linux_password
+    }
+  }
+
+  triggers = {
+    always_run = timestamp()
+  }
 }
 
-resource "linux_directory" "directory" {
-  path         = "/tmp/linux/dir"
-  owner        = 1000
-  group        = 1000
-  mode         = "755"
-  overwrite    = true
-  recycle_path = "/tmp/recycle"
-}
+# Create file with content and set ownership/permissions
+resource "null_resource" "create_file" {
+  provisioner "remote-exec" {
+    inline = [
+      "echo 'hello world' > /tmp/linux/file",
+      "chown 1000:1000 /tmp/linux/file",
+      "chmod 644 /tmp/linux/file"
+    ]
 
-resource "linux_file" "file" {
-  path    = "/tmp/linux/file"
-  content = <<-EOF
-    hello world
-  EOF
-  owner         = 1000
-  group         = 1000
-  mode          = "644"
-  overwrite     = true
-  recycle_path  = "/tmp/recycle"
+    connection {
+      type        = "ssh"
+      host        = var.linux_host
+      port        = var.linux_port
+      user        = var.linux_user
+      password    = var.linux_password
+    }
+  }
+
+  triggers = {
+    always_run = timestamp()
+  }
 }
 
 locals {
   package_name = "apache2"
 }
 
-resource "linux_script" "install_package" {
-  lifecycle_commands {
-    create = "apt update && apt install -y ${PACKAGE_NAME}=${PACKAGE_VERSION}"
-    read   = "apt-cache policy ${PACKAGE_NAME} | grep 'Installed:' | grep -v '(none)' | awk '{ print $2 }' | xargs | tr -d '\n'"
-    update = "apt update && apt install -y ${PACKAGE_NAME}=${PACKAGE_VERSION}"
-    delete = "apt remove -y ${PACKAGE_NAME}"
-  }
+# Install Apache2 package
+resource "null_resource" "install_package" {
+  provisioner "remote-exec" {
+    inline = [
+      "apt update",
+      "apt install -y ${local.package_name}=2.4.18-2ubuntu3.4"  # Adjust the version as necessary
+    ]
 
-  environment = {
-    PACKAGE_NAME    = local.package_name
-    PACKAGE_VERSION = "2.4.18-2ubuntu3.4"  # Adjust the version as necessary
+    connection {
+      type        = "ssh"
+      host        = var.linux_host
+      port        = var.linux_port
+      user        = var.linux_user
+      password    = var.linux_password
+    }
   }
 
   triggers = {
-    PACKAGE_NAME = local.package_name
+    package_name = local.package_name
   }
 }
 
