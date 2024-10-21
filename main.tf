@@ -8,19 +8,19 @@ terraform {
 }
 
 provider "linux" {
-  host     = "127.0.0.1"  # Change this to the appropriate host
-  port     = 22
-  user     = "root"
-  password = "root"  # Use environment variables or secrets for sensitive data
+  host     = var.linux_host
+  port     = var.linux_port
+  user     = var.linux_user
+  password = var.linux_password
 }
 
 resource "linux_directory" "directory" {
-  path          = "/tmp/linux/dir"
-  owner         = 1000
-  group         = 1000
-  mode          = "755"
-  overwrite     = true
-  recycle_path  = "/tmp/recycle"
+  path         = "/tmp/linux/dir"
+  owner        = 1000
+  group        = 1000
+  mode         = "755"
+  overwrite    = true
+  recycle_path = "/tmp/recycle"
 }
 
 resource "linux_file" "file" {
@@ -55,4 +55,25 @@ resource "linux_script" "install_package" {
   triggers = {
     PACKAGE_NAME = local.package_name
   }
+}
+
+variable "linux_host" {
+  description = "The host for the Linux provider"
+  type        = string
+}
+
+variable "linux_port" {
+  description = "The port for the Linux provider"
+  type        = number
+  default     = 22
+}
+
+variable "linux_user" {
+  description = "The user for the Linux provider"
+  type        = string
+}
+
+variable "linux_password" {
+  description = "The password for the Linux provider"
+  type        = string
 }
